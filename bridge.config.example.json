@@ -1,0 +1,12 @@
+{
+  "ffmpegPath": "C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe",
+  "pythonPath": "C:\\Tools\\helper\\python.exe",
+  "cameraName": "USB Video Device",
+  "port": 80,
+  "selfAddress": "192.168.1.100",
+  "selfPort": 18080,
+  "eofCompat": true,
+  "fps": 30,
+  "jpegQuality": 4,
+  "mirror": false
+}

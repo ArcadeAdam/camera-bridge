@@ -1,0 +1,14 @@
+{
+  "name": "camera-bridge",
+  "version": "1.0.0-rc.2",
+  "private": true,
+  "description": "Local USB webcam bridge serving baseline JPEG snapshots",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

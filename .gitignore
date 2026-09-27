@@ -1,0 +1,8 @@
+logs/
+*.pid
+test-results/
+diagnostics/
+bridge.config.json
+dist/
+__pycache__/
+*.pyc
