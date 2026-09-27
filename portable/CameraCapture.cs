@@ -161,6 +161,7 @@ namespace CameraBridge
 
         private void GraphLoop()
         {
+            HashSet<string> rejectedModes = new HashSet<string>(StringComparer.Ordinal);
             while (!stopping.WaitOne(0))
             {
                 object graphObject = null, builderObject = null, sourceObject = null;
@@ -168,6 +169,9 @@ namespace CameraBridge
                 Native.ISampleGrabber grabber = null;
                 Native.IMediaControl control = null;
                 SampleCallback callback = null;
+                CaptureMode selectedMode = null;
+                bool connecting = false;
+                bool retryAnotherMode = false;
                 try
                 {
                     EnumerateDevices(requestedName, delegate(string name, IMoniker moniker)
@@ -185,18 +189,22 @@ namespace CameraBridge
                     Native.ICaptureGraphBuilder2 builder = (Native.ICaptureGraphBuilder2)builderObject;
                     Native.Check(builder.SetFiltergraph(graph), "Attach capture graph");
                     Native.Check(graph.AddFilter((Native.IBaseFilter)sourceObject, "Camera"), "Add camera");
-                    ConfigureFormat(builder, (Native.IBaseFilter)sourceObject);
+                    selectedMode = ConfigureFormat(builder, (Native.IBaseFilter)sourceObject, rejectedModes);
                     Native.Check(graph.AddFilter((Native.IBaseFilter)grabberObject, "Pixels"), "Add pixel capture");
                     Native.Check(graph.AddFilter((Native.IBaseFilter)rendererObject, "Discard output"), "Add output sink");
                     grabber = (Native.ISampleGrabber)grabberObject;
                     Native.AMMediaType requested = new Native.AMMediaType();
                     requested.MajorType = Native.Video;
                     requested.SubType = Native.Rgb24;
+                    // Sample Grabber rejects VIDEOINFOHEADER2 even when SetMediaType
+                    // succeeds. Require the supported header at its input pin.
+                    requested.FormatType = Native.VideoInfo;
                     Native.Check(grabber.SetMediaType(requested), "Request RGB camera pixels");
                     Native.Check(grabber.SetOneShot(false), "Enable continuous camera capture");
                     Native.Check(grabber.SetBufferSamples(false), "Disable redundant camera buffering");
                     Guid category = Native.Capture;
                     Guid video = Native.Video;
+                    connecting = true;
                     Native.Check(builder.RenderStream(ref category, ref video, sourceObject,
                         (Native.IBaseFilter)grabberObject, (Native.IBaseFilter)rendererObject), "Connect camera graph");
                     Native.AMMediaType connected = new Native.AMMediaType();
@@ -221,7 +229,24 @@ namespace CameraBridge
                             throw new IOException("Camera stopped delivering images; reconnecting.");
                     }
                 }
-                catch (Exception ex) { if (!stopping.WaitOne(0)) lastError = ex.Message; }
+                catch (FormatsExhaustedException)
+                {
+                    // Preserve the last concrete failure and its selected format.
+                    // A later cycle can recover after a device/driver state change.
+                    rejectedModes.Clear();
+                }
+                catch (Exception ex)
+                {
+                    if (!stopping.WaitOne(0))
+                    {
+                        lastError = ex.Message + (selectedMode == null ? "" : " Selected camera format: " + selectedMode.Description + ".");
+                        if (connecting && selectedMode != null)
+                        {
+                            rejectedModes.Add(selectedMode.Key);
+                            retryAnotherMode = true;
+                        }
+                    }
+                }
                 finally
                 {
                     if (control != null) { try { control.Stop(); } catch (COMException) { } }
@@ -235,7 +260,9 @@ namespace CameraBridge
                     Native.Release(graphObject);
                     GC.KeepAlive(callback);
                 }
-                if (stopping.WaitOne(1000)) break;
+                // Rebuild rather than reconnecting a graph that may contain
+                // partially connected decoder/converter filters from a failed try.
+                if (stopping.WaitOne(retryAnotherMode ? 25 : 1000)) break;
             }
         }
 
@@ -331,7 +358,7 @@ namespace CameraBridge
             }
         }
 
-        private void ConfigureFormat(Native.ICaptureGraphBuilder2 builder, Native.IBaseFilter source)
+        private CaptureMode ConfigureFormat(Native.ICaptureGraphBuilder2 builder, Native.IBaseFilter source, HashSet<string> rejectedModes)
         {
             Guid category = Native.Capture, video = Native.Video, iid = typeof(Native.IAMStreamConfig).GUID;
             object configObject = null;
@@ -339,10 +366,12 @@ namespace CameraBridge
             IntPtr caps = IntPtr.Zero;
             try
             {
-                if (builder.FindInterface(ref category, ref video, source, ref iid, out configObject) < 0 || configObject == null) return;
+                if (builder.FindInterface(ref category, ref video, source, ref iid, out configObject) < 0 || configObject == null)
+                    return DefaultMode(rejectedModes);
                 Native.IAMStreamConfig config = (Native.IAMStreamConfig)configObject;
                 int count, size;
-                if (config.GetNumberOfCapabilities(out count, out size) < 0 || count < 1 || count > 1024 || size < 1 || size > 65536) return;
+                if (config.GetNumberOfCapabilities(out count, out size) < 0 || count < 1 || count > 1024 || size < 1 || size > 65536)
+                    return DefaultMode(rejectedModes);
                 caps = Marshal.AllocCoTaskMem(size);
                 for (int index = 0; index < count; index++)
                 {
@@ -363,27 +392,39 @@ namespace CameraBridge
                             if (capability.MinFrameInterval > 0 && capability.MaxFrameInterval >= capability.MinFrameInterval)
                                 interval = Math.Min(capability.MaxFrameInterval, Math.Max(capability.MinFrameInterval, interval));
                         }
-                        long score = (bitmap.Width == 320 && height == 240 ? 0 : 100000000L) +
-                            Math.Abs((long)bitmap.Width * height - 320 * 240) + Math.Abs(interval - 10000000L / fps);
-                        candidates.Add(new FormatCandidate { Pointer = pointer, Type = type, Interval = interval, Score = score });
+                        candidates.Add(new FormatCandidate {
+                            Pointer = pointer, Type = type, Interval = interval, Index = index,
+                            Width = bitmap.Width, Height = bitmap.Height,
+                            HeaderRank = (type.FormatType == Native.VideoInfo ? 0 : 1) + (bitmap.Height < 0 ? 2 : 0),
+                            ResolutionRank = bitmap.Width == 320 && height == 240 ? 0 : 1,
+                            SizeDistance = Math.Abs((long)bitmap.Width * height - 320 * 240),
+                            IntervalDistance = Math.Abs(interval - 10000000L / fps),
+                            SubtypeRank = Native.SubtypeRank(type.SubType)
+                        });
                         pointer = IntPtr.Zero;
                         type = null;
                     }
                     catch (ArgumentException) { }
                     finally { Native.FreeMediaType(type); if (pointer != IntPtr.Zero) Marshal.FreeCoTaskMem(pointer); }
                 }
-                candidates.Sort(delegate(FormatCandidate left, FormatCandidate right) { return left.Score.CompareTo(right.Score); });
+                candidates.Sort(CompareFormats);
                 foreach (FormatCandidate candidate in candidates)
                 {
+                    string key = candidate.Index + ":" + candidate.Type.SubType + ":" + candidate.Type.FormatType + ":" + candidate.Width + "x" + candidate.Height;
+                    if (rejectedModes.Contains(key)) continue;
                     // AvgTimePerFrame has the same offset in VIDEOINFOHEADER and VIDEOINFOHEADER2.
                     long originalInterval = Marshal.ReadInt64(candidate.Type.FormatPtr, 40);
                     Marshal.WriteInt64(candidate.Type.FormatPtr, 40, candidate.Interval);
-                    if (config.SetFormat(candidate.Type) >= 0) return;
+                    if (config.SetFormat(candidate.Type) >= 0) return DescribeMode(candidate, key, candidate.Interval);
                     Marshal.WriteInt64(candidate.Type.FormatPtr, 40, originalInterval);
-                    if (config.SetFormat(candidate.Type) >= 0) return;
+                    if (originalInterval != candidate.Interval && config.SetFormat(candidate.Type) >= 0)
+                        return DescribeMode(candidate, key, originalInterval);
+                    rejectedModes.Add(key);
                 }
                 // Drivers without a settable format can still negotiate RGB24;
                 // the encoder resizes the negotiated dimensions to 320 by 240.
+                // Try that negotiation once too, then back off before a new cycle.
+                return DefaultMode(rejectedModes);
             }
             finally
             {
@@ -392,6 +433,33 @@ namespace CameraBridge
                 if (caps != IntPtr.Zero) Marshal.FreeCoTaskMem(caps);
                 Native.Release(configObject);
             }
+        }
+
+        private static int CompareFormats(FormatCandidate left, FormatCandidate right)
+        {
+            int result = left.HeaderRank.CompareTo(right.HeaderRank);
+            if (result == 0) result = left.ResolutionRank.CompareTo(right.ResolutionRank);
+            if (result == 0) result = left.IntervalDistance.CompareTo(right.IntervalDistance);
+            if (result == 0) result = left.SubtypeRank.CompareTo(right.SubtypeRank);
+            if (result == 0) result = left.SizeDistance.CompareTo(right.SizeDistance);
+            if (result == 0) result = left.Index.CompareTo(right.Index);
+            return result;
+        }
+
+        private static CaptureMode DescribeMode(FormatCandidate candidate, string key, long interval)
+        {
+            return new CaptureMode {
+                Key = key,
+                Description = Native.SubtypeName(candidate.Type.SubType) + ", " +
+                    (candidate.Type.FormatType == Native.VideoInfo ? "VIDEOINFO" : "VIDEOINFO2") + ", " +
+                    candidate.Width + "x" + candidate.Height + ", interval=" + interval + " (100 ns)"
+            };
+        }
+
+        private static CaptureMode DefaultMode(HashSet<string> rejectedModes)
+        {
+            if (rejectedModes.Contains("driver-default")) throw new FormatsExhaustedException();
+            return new CaptureMode { Key = "driver-default", Description = "driver default negotiated as RGB24/VIDEOINFO" };
         }
 
         private static string[] EnumerateDevices(string wanted, Action<string, IMoniker> selected)
@@ -433,7 +501,15 @@ namespace CameraBridge
         private sealed class RawFrame
         { public byte[] Pixels; public PixelLayout Layout; public DateTime CapturedAtUtc; }
         private sealed class FormatCandidate
-        { public IntPtr Pointer; public Native.AMMediaType Type; public long Interval; public long Score; }
+        {
+            public IntPtr Pointer;
+            public Native.AMMediaType Type;
+            public long Interval, IntervalDistance, SizeDistance;
+            public int Index, Width, Height, HeaderRank, ResolutionRank, SubtypeRank;
+        }
+        private sealed class CaptureMode
+        { public string Key, Description; }
+        private sealed class FormatsExhaustedException : Exception { }
         private sealed class PixelLayout
         {
             public int Width, Height, Stride, ByteCount;
@@ -473,7 +549,7 @@ namespace CameraBridge
             public static readonly Guid Video = new Guid("73646976-0000-0010-8000-00AA00389B71");
             public static readonly Guid Rgb24 = new Guid("E436EB7D-524F-11CE-9F53-0020AF0BA770");
             public static readonly Guid Capture = new Guid("FB6C4281-0353-11D1-905F-0000C0CC16BA");
-            private static readonly Guid VideoInfo = new Guid("05589F80-C356-11CE-BF01-00AA0055595A");
+            public static readonly Guid VideoInfo = new Guid("05589F80-C356-11CE-BF01-00AA0055595A");
             private static readonly Guid VideoInfo2 = new Guid("F72A76A0-EB0A-11D0-ACE4-0000C0CC16BA");
             public static object Create(string clsid) { return Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid(clsid), true)); }
             public static void Check(int result, string operation)
@@ -485,6 +561,30 @@ namespace CameraBridge
                 if (type == null) return;
                 if (type.FormatPtr != IntPtr.Zero) { Marshal.FreeCoTaskMem(type.FormatPtr); type.FormatPtr = IntPtr.Zero; }
                 if (type.Unknown != IntPtr.Zero) { Marshal.Release(type.Unknown); type.Unknown = IntPtr.Zero; }
+            }
+            public static int SubtypeRank(Guid subtype)
+            {
+                string name = SubtypeName(subtype);
+                if (name == "RGB24") return 0;
+                if (name == "YUY2") return 1;
+                if (name == "UYVY") return 2;
+                if (name == "RGB32") return 3;
+                if (name == "MJPG") return 10;
+                return 20;
+            }
+            public static string SubtypeName(Guid subtype)
+            {
+                if (subtype == Rgb24) return "RGB24";
+                if (subtype == new Guid("E436EB7E-524F-11CE-9F53-0020AF0BA770")) return "RGB32";
+                string value = subtype.ToString();
+                if (value.EndsWith("-0000-0010-8000-00aa00389b71", StringComparison.Ordinal))
+                {
+                    byte[] bytes = subtype.ToByteArray();
+                    if (bytes[0] >= 32 && bytes[0] < 127 && bytes[1] >= 32 && bytes[1] < 127 &&
+                        bytes[2] >= 32 && bytes[2] < 127 && bytes[3] >= 32 && bytes[3] < 127)
+                        return System.Text.Encoding.ASCII.GetString(bytes, 0, 4);
+                }
+                return value;
             }
             public static BitmapInfoHeader ReadBitmapHeader(AMMediaType type)
             {
