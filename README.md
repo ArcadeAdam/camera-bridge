@@ -2,11 +2,9 @@
 
 ![Camera pictures on two linked cabinets](docs/images/linked-cabinets.jpg)
 
-*Photo from the earlier bridge version.*
-
 Show your USB webcam picture in the game. Each cabinet needs its own webcam and copy of Camera Bridge.
 
-**[Download Camera Bridge](https://github.com/ArcadeAdam/camera-bridge/releases/download/v1.0.0-rc.4/camera-bridge-1.0.0-rc.4-win-x64.zip)** — Windows 10/11, 64-bit, with .NET Framework 4.8 or newer. This is a test release.
+**[Download Camera Bridge](https://github.com/ArcadeAdam/camera-bridge/releases/download/v1.0.0-rc.4/camera-bridge-1.0.0-rc.4-win-x64.zip)** — Windows 10/11, 64-bit, with .NET Framework 4.8 or newer.
 
 ## 1. Start the camera
 
@@ -28,16 +26,11 @@ In the emulator, open **Triforce → IP Address Redirections**. Find the camera 
 
 Use **this cabinet's own address**. Do not use `127.0.0.1` or add `http://`. Keep your other working network rows.
 
-<details>
-<summary>Show an example</summary>
-
 ![Example camera address: 192.168.1.2:18080](docs/images/triforce-ip-redirections.png)
 
-</details>
+## 3. Set GP2 video settings
 
-## 3. Fix linked photos in GP2
-
-Do this on **both cabinets** so the other player's photo does not turn black:
+Use these settings on **both cabinets**.
 
 1. Close the game and emulator.
 2. In the emulator folder, open `User\GameSettings\GNLE82.ini` with Notepad. Make a backup first.
