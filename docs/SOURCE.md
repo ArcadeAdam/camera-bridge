@@ -2,7 +2,7 @@
 
 The main [setup guide](../README.md) is for the new portable package: **CameraBridge.exe + CameraBridge.cfg**. Users of that package do not need the development runtimes described below.
 
-The portable rewrite uses the system's .NET Framework 4.8, native webcam capture through DirectShow, and JPEG encoding through System.Drawing. It needs fresh camera, game, linked-play, and lifecycle tests. Earlier installed-edition results are not evidence that the rewrite passes those tests.
+The portable rewrite uses the system's .NET Framework 4.8, native webcam capture through DirectShow, and JPEG encoding through System.Drawing. Native rc.4 passed physical capture checks on both cabinets. The user also confirmed GP2 local and remote portraits on both linked cabinets after the GP2-only settings change below. A fresh native GP1 test and repeated frontend start/exit tests remain pending; earlier installed-edition results do not cover them.
 
 ## Build the portable app
 
@@ -24,7 +24,21 @@ Run the native socket tests from the repository root:
 .\portable\tests\Test-Portable.ps1 -ExePath .\dist\camera-bridge-1.0.0-rc.4-win-x64\CameraBridge.exe
 ```
 
-The process tests use a generated picture and temporary ports. Run them in the same Windows user session as the app; a restricted sandbox identity can differ from the user that launches the child process. They do not start games or change cabinet settings. A live webcam check and a new game test are still required.
+The process tests use a generated picture and temporary ports. Run them in the same Windows user session as the app; a restricted sandbox identity can differ from the user that launches the child process. They do not start games or change cabinet settings. After changing or rebuilding the app, also check a live webcam and the game itself.
+
+## GP2 linked photos
+
+Native rc.4 displayed both cabinets' local photos, but each remote player's photo was black. The user confirmed the fix after adding these settings to each cabinet's GP2-only `User\GameSettings\GNLE82.ini`:
+
+```ini
+[Video_Hacks]
+EFBToTextureEnable = False
+DeferEFBCopies = False
+```
+
+Both settings were changed together; the minimum individual change has not been established. No equivalent GP1 requirement has been confirmed. The existing guarded 20-second LAN-check patch, emulator executable, and IP table were preserved. These graphics settings are separate from the camera bridge's HTTP/EOF compatibility.
+
+See the [step-by-step fix](SETUP.md#gp2-linked-photo-fix) and [validation record](../VALIDATION.md#gp2-remote-portrait-fix), including the saved configuration hash. No new capture or game FPS measurement was made during this test.
 
 ## Protocol requirements
 
@@ -141,7 +155,7 @@ Inspect `logs\bridge.log` for source-runtime errors. A rising request counter do
 
 [tools/build_source_zip.py](../tools/build_source_zip.py) creates an allowlisted source archive and SHA-256 manifest. That archive is separate from the two-file portable download. Never package a live cabinet folder, local settings, logs, diagnostic backups, game images, or emulator binaries.
 
-The published portable asset is `camera-bridge-1.0.0-rc.4-win-x64.zip` under tag [`v1.0.0-rc.4`](https://github.com/ArcadeAdam/camera-bridge/releases/tag/v1.0.0-rc.4). Its release page includes `SHA256SUMS.txt` for checking the download. Fresh game and linked-cabinet tests remain pending.
+The published portable asset is `camera-bridge-1.0.0-rc.4-win-x64.zip` under tag [`v1.0.0-rc.4`](https://github.com/ArcadeAdam/camera-bridge/releases/tag/v1.0.0-rc.4). Its release page includes `SHA256SUMS.txt` for checking the download. GP2 local and remote linked portraits are user-confirmed with the settings above; a fresh native GP1 test and repeated frontend start/exit tests remain pending.
 
 For the native rewrite, record the compiler target and binary hash, then check capture/JPEG format, exact-response EOF behavior, same-host access, busy ports, stop/restart, both games, linked play, and frontend lifecycle. Keep native results separate from the previous implementation in [VALIDATION.md](../VALIDATION.md).
 

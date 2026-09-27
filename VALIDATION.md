@@ -6,7 +6,7 @@ Updated **2026-09-27 UTC**. Results for the new portable rewrite and the previou
 
 The portable download is `camera-bridge-1.0.0-rc.4-win-x64.zip`, containing only `CameraBridge.exe` and `CameraBridge.cfg`. The standalone executable is about **80 KB** and needs no third-party binaries. It uses the system's .NET Framework; both cabinets have **4.8.1**, registry Release `533509`.
 
-Version rc.3 captured correctly on cabinet A, but cabinet B could not connect its selected video format. Version rc.4 requests a supported video header and tries another format after a connection failure. The fix passed physical capture and three game-style EOF checks on each cabinet. Cabinet B's candidate started in 1.924 seconds and stopped cleanly. These are standalone checks; new game sessions remain pending.
+Version rc.3 captured correctly on cabinet A, but cabinet B could not connect its selected video format. Version rc.4 requests a supported video header and tries another format after a connection failure. The fix passed physical capture and three game-style EOF checks on each cabinet. Cabinet B's candidate started in 1.924 seconds and stopped cleanly. The user later confirmed GP2 local and remote portraits on both linked cabinets after the GP2 settings change recorded below. A fresh native GP1 test and repeated frontend start/exit tests remain pending.
 
 | Check | Current result | Scope |
 | --- | --- | --- |
@@ -17,13 +17,30 @@ Version rc.3 captured correctly on cabinet A, but cabinet B could not connect it
 | Hidden `--start` and `--stop` commands | Passed with test pattern and physical webcam | Startup waited for a fresh frame; both commands returned exit code `0`. The live camera health check showed a 4 ms frame age. Actual frontend game sessions remain separate. |
 | Capture/server code review | Completed and fix tested | Preview routes reject non-local Host names. Game requests remain compatible with the original hostless HTTP request. |
 | Portable installation on cabinet A | Passed standalone checks | Installed EXE with local CFG; all eight existing frontend hooks migrated for four game entries, with XML backups and an idempotent verification. Exact start/stop commands succeeded with the physical webcam. Three LAN-bound probes passed JPEG dimensions, Content-Length, final EOI, urgent readiness and normal EOF, including a fragmented NUL request. |
-| Game camera tests on cabinet A | Pending | Recheck both supported titles with the portable rewrite. |
+| GP2 game camera tests on both cabinets | Passed by user report | Both local camera images worked with native rc.4. Remote portraits initially appeared black, then worked after both GP2 graphics settings below were disabled on both cabinets. |
+| GP1 game camera test with the native build | Pending | The earlier edition's GP1 result does not establish a fresh native rc.4 result. Whether GP1 needs the same graphics settings is unconfirmed. |
 | Cabinet B capture fallback candidate | Passed standalone checks | Candidate built from commit `6b725760f711b053b6c1d1607b1475026f88535a`: live 320x240 capture, three game-style checks, and successful start/stop with no leftover processes or listeners. Official release-file installation and fresh game tests are recorded separately. |
-| Official rc.4 release installed on both cabinets | Passed standalone checks | Both installed EXEs match SHA-256 `1AAE296C6D0B8401D4041D8C915D1DEE612858D94F69FE2C74B9EC0E9ED91ECD`. Cabinet A passed its final installed start/EOF/stop check. Cabinet B passed two physical start/stop cycles and all three game-style protocol checks. Both use their own configured webcam and LAN address; each has eight frontend hooks across four game entries and a desktop shortcut. Both bridges were left stopped, with no remaining processes or listeners, ready for a user game test. |
-| Linked play with both portable bridges | Pending | Recheck both images and linked play using this build on both cabinets. |
+| Official rc.4 release installed on both cabinets | Passed standalone checks | Both installed EXEs match SHA-256 `1AAE296C6D0B8401D4041D8C915D1DEE612858D94F69FE2C74B9EC0E9ED91ECD`. Cabinet A passed its final installed start/EOF/stop check. Cabinet B passed two physical start/stop cycles and all three game-style protocol checks. Both use their own configured webcam and LAN address; each has eight frontend hooks across four game entries and a desktop shortcut. Both bridges were initially left stopped, with no remaining processes or listeners, before the later user game test. |
+| GP2 linked play with both portable bridges | Camera portraits passed by user report | The user confirmed both local and remote player photos after the combined GP2 settings change on both cabinets. This does not establish a GP1 result or repeated frontend lifecycle results. |
 | LaunchBox repeated start/exit | Pending | Verify `--start` / `--stop` with real game sessions on each cabinet. |
 
-The user's [linked-cabinet photo](docs/images/linked-cabinets.jpg) shows **two visible camera images from the previous installed edition**. It does not validate a fresh game session using the portable rewrite.
+The user's [linked-cabinet photo](docs/images/linked-cabinets.jpg) shows **two visible camera images from the previous installed edition**. Native rc.4's GP2 result above comes from the later user report, not that earlier photo.
+
+### GP2 remote portrait fix
+
+With both games closed, the following GP2-only settings were added to `User\GameSettings\GNLE82.ini` on both cabinets after backup:
+
+```ini
+[Video_Hacks]
+EFBToTextureEnable = False
+DeferEFBCopies = False
+```
+
+The user confirmed that the other player's previously black portrait now showed its photo on both cabinets. **The two settings were tested together.** This does not prove that either setting alone is sufficient. Their need in GP1 is unconfirmed.
+
+The saved GP2 game-settings file has SHA-256 `F0E5CC79AB5EA5438A2C0553D56CD6620CCFF00597AC6E23B67AB96E5AC218F0`. The existing guarded 20-second boot LAN-check patch remained in place. The emulator executable and cabinet IP table were unchanged for this trial. See the [GP2 setup steps](docs/SETUP.md#gp2-linked-photo-fix).
+
+This change did not produce a new FPS measurement. The native capture rate recorded above remains about 15 FPS on cabinet A. Repeated real-game frontend start/exit tests remain pending.
 
 ## Previous edition
 

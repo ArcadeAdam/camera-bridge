@@ -6,12 +6,14 @@ The portable package contains **CameraBridge.exe** and **CameraBridge.cfg**. It 
 
 ## Before you begin
 
-1. Finish the [standalone setup](README.md#download-and-start).
+1. Finish the [standalone setup](README.md#1-start-the-camera).
 2. Open **CameraBridge.exe** and check its preview.
 3. Start the game manually. Check its camera test and in-game image.
 4. Close the game and close Camera Bridge.
 
 Use each cabinet's own bridge folder and CFG. The examples below use `C:\Tools\Camera`.
+
+For GP2 linked play, apply the [linked-photo fix](docs/SETUP.md#gp2-linked-photo-fix) on both cabinets. The user confirmed local and remote photos with portable rc.4 after that fix. It changes two GP2 settings together; the same need in GP1 is not confirmed.
 
 ## Add two Additional Apps
 
@@ -49,7 +51,7 @@ Test each game on each cabinet.
 5. Launch and exit again to check that the camera can reopen.
 6. Test linked play with both cabinets. Exiting one cabinet should release only its own camera.
 
-The new portable build still needs these fresh game and lifecycle checks. Successful tests of the earlier installed edition do not automatically cover this rewrite.
+GP2 local and remote photos are confirmed on both linked cabinets with portable rc.4 and the linked-photo fix. Repeated frontend start/exit tests and a fresh native GP1 test remain pending. Run the steps above on your own setup to check that the camera starts and stops with each game.
 
 ## Troubleshooting
 

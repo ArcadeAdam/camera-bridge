@@ -22,7 +22,7 @@ def main():
         "Test-CameraEof.ps1",
         "tools/Test-OobEof.ps1", "tools/build_source_zip.py",
         "docs/images/triforce-ip-redirections.png",
-        "docs/images/linked-cabinets.jpg", "docs/SOURCE.md",
+        "docs/images/linked-cabinets.jpg", "docs/SOURCE.md", "docs/SETUP.md",
         "tools/Build-Portable.ps1", "portable/CameraBridge.cfg", "portable/app.manifest",
     ]
     if (root / "LICENSE").is_file():
