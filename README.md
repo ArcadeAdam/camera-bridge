@@ -8,7 +8,7 @@ Show your USB webcam picture in the game. Each cabinet needs its own webcam and 
 
 ## 1. Start the camera
 
-1. Plug in your webcam. Close other camera apps and any older bridge.
+1. Plug in your webcam. Close other camera apps.
 2. Download the ZIP. Right-click it and choose **Extract All**.
 3. Keep **CameraBridge.exe** and **CameraBridge.cfg** in the same folder.
 4. Open **CameraBridge.exe**. Check that you see a picture.
