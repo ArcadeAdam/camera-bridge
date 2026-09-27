@@ -4,11 +4,11 @@
 
 *Both linked cabinets showing camera images with the earlier installed edition. The new portable build still needs a fresh game test.*
 
-Camera Bridge lets a USB webcam act as a network camera. It serves a small, complete 320 x 240 JPEG for each camera request. Each cabinet uses its own webcam and its own copy of the app.
+Camera Bridge sends your USB webcam picture to the game. Run one copy on each cabinet, using that cabinet's own webcam.
 
 ## Download and start
 
-**[Download Camera Bridge for Windows](https://github.com/ArcadeAdam/camera-bridge/releases/download/v1.0.0-rc.3/camera-bridge-1.0.0-rc.3-win-x64.zip)** (release candidate).
+**[Download Camera Bridge for Windows](https://github.com/ArcadeAdam/camera-bridge/releases/download/v1.0.0-rc.4/camera-bridge-1.0.0-rc.4-win-x64.zip)** (release candidate).
 
 The portable ZIP contains only:
 

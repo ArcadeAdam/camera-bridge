@@ -14,14 +14,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-Portable.ps1
 
 The build uses the system's .NET Framework C# compiler. It does not download runtimes or bundle third-party binaries. Its inputs are the C# files under `portable/`, the application manifest, and `CameraBridge.cfg`.
 
-The output is `dist\camera-bridge-1.0.0-rc.3-win-x64.zip`, containing only `CameraBridge.exe` and `CameraBridge.cfg`. Compile success is not a camera or game test. Check the built files before distribution and record fresh results separately.
+The output is `dist\camera-bridge-1.0.0-rc.4-win-x64.zip`, containing only `CameraBridge.exe` and `CameraBridge.cfg`. Compile success is not a camera or game test. Check the built files before distribution and record fresh results separately.
 
 Run the native socket tests from the repository root:
 
 ```powershell
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /reference:System.Drawing.dll /out:dist\ServerTests.exe portable\CameraServer.cs portable\tests\ServerTests.cs
 .\dist\ServerTests.exe
-.\portable\tests\Test-Portable.ps1 -ExePath .\dist\camera-bridge-1.0.0-rc.3-win-x64\CameraBridge.exe
+.\portable\tests\Test-Portable.ps1 -ExePath .\dist\camera-bridge-1.0.0-rc.4-win-x64\CameraBridge.exe
 ```
 
 The process tests use a generated picture and temporary ports. Run them in the same Windows user session as the app; a restricted sandbox identity can differ from the user that launches the child process. They do not start games or change cabinet settings. A live webcam check and a new game test are still required.

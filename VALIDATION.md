@@ -2,9 +2,11 @@
 
 Updated **2026-09-27 UTC**. Results for the new portable rewrite and the previous installed edition are recorded separately.
 
-## Portable v1.0.0-rc.3
+## Portable v1.0.0-rc.4
 
-The portable download is `camera-bridge-1.0.0-rc.3-win-x64.zip`, containing only `CameraBridge.exe` and `CameraBridge.cfg`. The standalone executable is about **77 KB** and needs no third-party binaries. It uses the system's .NET Framework; cabinet A has **4.8.1**, registry Release `533509`.
+The portable download is `camera-bridge-1.0.0-rc.4-win-x64.zip`, containing only `CameraBridge.exe` and `CameraBridge.cfg`. The standalone executable is about **80 KB** and needs no third-party binaries. It uses the system's .NET Framework; both cabinets have **4.8.1**, registry Release `533509`.
+
+Version rc.3 captured correctly on cabinet A, but cabinet B could not connect its selected video format. Version rc.4 requests a supported video header and tries another format after a connection failure. The fix passed physical capture and three game-style EOF checks on each cabinet. Cabinet B's candidate started in 1.924 seconds and stopped cleanly. These are standalone checks; new game sessions remain pending.
 
 | Check | Current result | Scope |
 | --- | --- | --- |
@@ -16,7 +18,7 @@ The portable download is `camera-bridge-1.0.0-rc.3-win-x64.zip`, containing only
 | Capture/server code review | Completed and fix tested | Preview routes reject non-local Host names. Game requests remain compatible with the original hostless HTTP request. |
 | Portable installation on cabinet A | Passed standalone checks | Installed EXE with local CFG; all eight existing frontend hooks migrated for four game entries, with XML backups and an idempotent verification. Exact start/stop commands succeeded with the physical webcam. Three LAN-bound probes passed JPEG dimensions, Content-Length, final EOI, urgent readiness and normal EOF, including a fragmented NUL request. |
 | Game camera tests on cabinet A | Pending | Recheck both supported titles with the portable rewrite. |
-| Portable installation and game checks on cabinet B | Pending | No completed installation or game result is claimed here. |
+| Cabinet B capture fallback candidate | Passed standalone checks | Candidate built from commit `6b725760f711b053b6c1d1607b1475026f88535a`: live 320x240 capture, three game-style checks, and successful start/stop with no leftover processes or listeners. Official release-file installation and fresh game tests are recorded separately. |
 | Linked play with both portable bridges | Pending | Recheck both images and linked play using this build on both cabinets. |
 | LaunchBox repeated start/exit | Pending | Verify `--start` / `--stop` with real game sessions on each cabinet. |
 
