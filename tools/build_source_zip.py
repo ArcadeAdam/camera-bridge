@@ -21,10 +21,13 @@ def main():
         "Stop Camera.cmd", "Start-Camera.ps1", "Stop-Camera.ps1",
         "Test-CameraEof.ps1",
         "tools/Test-OobEof.ps1", "tools/build_source_zip.py",
+        "docs/images/triforce-ip-redirections.png",
+        "docs/images/linked-cabinets.jpg", "docs/SOURCE.md",
+        "tools/Build-Portable.ps1", "portable/CameraBridge.cfg", "portable/app.manifest",
     ]
     if (root / "LICENSE").is_file():
         names.append("LICENSE")
-    for pattern in ("lib/*.js", "lib/*.py", "test/*.js"):
+    for pattern in ("lib/*.js", "lib/*.py", "test/*.js", "portable/*.cs", "portable/tests/*.cs", "portable/tests/*.ps1"):
         names.extend(p.relative_to(root).as_posix() for p in root.glob(pattern) if p.is_file())
     names = sorted(set(names))
     # Package only the declared source files. Local integration tools and data

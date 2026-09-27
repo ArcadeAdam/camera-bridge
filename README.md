@@ -1,173 +1,130 @@
 # Camera Bridge
 
-Use a USB webcam as the network camera for two supported arcade titles in the tested emulator. The bridge keeps the webcam open and serves its latest complete **320 × 240 baseline JPEG** at `/img.jpg`.
+![Two linked cabinets showing their local camera images](docs/images/linked-cabinets.jpg)
 
-The user reports both supported titles working on the installed cabinets with the original, unmodified emulator executable. A linked session of the second title was also reported working; a paired race with both webcams active has not been separately confirmed. Both cabinets have passed standalone bridge capture and EOF checks, and their previous game sessions logged bridge shutdown followed by fresh capture during subsequent sessions. These live results describe the installed cabinet version, not a new live test of this renamed public candidate. See [VALIDATION.md](VALIDATION.md) for confirmed checks and remaining play-tests.
+*Both linked cabinets showing camera images with the earlier installed edition. The new portable build still needs a fresh game test.*
 
-## Requirements
+Camera Bridge lets a USB webcam act as a network camera. It serves a small, complete 320 x 240 JPEG for each camera request. Each cabinet uses its own webcam and its own copy of the app.
 
-- Windows with Windows PowerShell and a USB webcam accessible through DirectShow (`dshow`).
-- Node.js **18 or newer** for the server; tested versions **24.17.0** and **24.21.0**.
-- Python **3** for the compatibility helper; tested version **3.14.6**.
-- FFmpeg with DirectShow input and MJPEG (`mjpeg`) encoding; tested version **8.1.2**.
-- Your existing tested emulator installation and games.
+## Download and start
 
-The bridge uses the runtimes' standard libraries and requires no npm or pip package installation. Node.js, Python, FFmpeg, emulator/launcher binaries, and game files are not bundled. Use a complete FFmpeg distribution: shared builds also need their accompanying DLLs.
+**[Download Camera Bridge for Windows](https://github.com/ArcadeAdam/camera-bridge/releases/download/v1.0.0-rc.3/camera-bridge-1.0.0-rc.3-win-x64.zip)** (release candidate).
 
-## Configure this computer
+The portable ZIP contains only:
 
-Extract the source package into a writable folder. For a fresh installation, double-click **Setup Camera.cmd** and follow the prompts for runtime paths, webcam name, and this computer's local IP address. Setup creates only the bridge configuration and prints the camera redirection to enter manually. It does not download runtimes, start applications, or change the emulator or frontend.
+- `CameraBridge.exe`
+- `CameraBridge.cfg`
 
-The setup script also supports unattended parameters with `-NoPrompt`, previewing changes with `-WhatIf`, and explicitly replacing an existing configuration with `-ReplaceExisting`; replacement creates a backup. Check `Get-Help .\Setup-Camera.ps1` for its parameter names.
+Use Windows 10 or 11, 64-bit, with the system's .NET Framework 4.8 or newer. No separate runtime download, installer, or administrator access is normally needed.
 
-For manual setup instead, change to the extracted folder in Windows PowerShell and create your local settings:
+1. Right-click the downloaded ZIP and choose **Extract All**. Keep both files together in a folder, such as `C:\Tools\Camera`.
+2. Stop any older camera bridge so it releases the webcam and ports.
+3. Double-click **CameraBridge.exe**.
+4. Check the preview and the camera destination shown in the app.
+5. Set the game's camera route as explained below, then start the game.
 
-```text
-Copy-Item .\bridge.config.example.json .\bridge.config.json
+The app starts capture when opened. **Stop** releases the webcam. **Closing the app also stops capture and releases the webcam.** The package does not edit your emulator or frontend.
+
+## Settings
+
+Click **Edit settings** to stop capture and open `CameraBridge.cfg` in Notepad. Save your changes, close Notepad, then click **Start camera**. Use **Camera names** in the app if you need the exact webcam name.
+
+The default file is:
+
+```ini
+camera=auto
+address=auto
+camera_port=18080
+preview_port=80
+fps=30
+jpeg_quality=85
+mirror=false
 ```
 
-Edit `bridge.config.json` before starting. The example's paths and IP are placeholders.
-
-| Setting | What to enter |
+| Setting | What it does |
 | --- | --- |
-| `ffmpegPath` | Path to this computer's `ffmpeg.exe`. |
-| `pythonPath` | Path to this computer's Python 3 executable. |
-| `cameraName` | Exact DirectShow video-device name. |
-| `selfAddress` | This computer's own LAN IPv4 address, matching its cabinet source mapping in the emulator. |
-| `selfPort` | Game-facing camera port; the example uses `18080`. |
-| `port` | Local preview/status port; the example uses `80`. |
-| `eofCompat` | Keep `true` for the tested host emulator build. |
-| `fps` | Requested capture rate, 1–30; the example uses 30. |
-| `jpegQuality` | Encoder JPEG quality, 2–31; smaller values produce larger, higher-quality images. |
-| `mirror` | Set `true` to flip the image horizontally. |
+| `camera` | `auto` selects the first webcam. Enter the exact device name to choose another. |
+| `address` | `auto` finds a LAN address. Enter this computer's own IPv4 address if it chooses the wrong adapter. |
+| `camera_port` | Port used by the game's camera route. Default: `18080`. |
+| `preview_port` | Local preview/status port. Default: `80`. |
+| `fps` | Requested capture rate, from 1 to 30. The webcam must support it. |
+| `jpeg_quality` | Image quality from 1 to 100. Higher values make larger images. Default: `85`. |
+| `mirror` | Use `true` to flip the image left to right. |
 
-Explicit FFmpeg and Python paths can be absolute or relative to the configuration file. If you omit a JSON field, the bridge checks `CAMERA_FFMPEG_PATH` or `CAMERA_PYTHON_PATH`, then searches `PATH`. An invalid explicit setting causes an error instead of silently selecting another executable. Remove a placeholder field if you want environment or `PATH` discovery.
+Always check the displayed camera destination. It must use **this cabinet's own LAN address**, matching its source address in the emulator's seat mappings. Do not copy another cabinet's address into this file.
 
-The start script finds `node.exe` on `PATH`. Alternatively, add `nodePath` to your configuration or set `CAMERA_NODE_PATH`. Relative runtime paths resolve from the bridge folder. JSON paths need escaped backslashes, for example `"C:\\Tools\\Runtime\\node.exe"`.
+Requesting 30 FPS does not make the game show 30 camera images per second. The webcam and game may run more slowly. The app shows the actual capture rate.
 
-Find the webcam's exact name using the FFmpeg executable selected in your configuration. Run these commands in Windows PowerShell from the bridge folder. For a relative path, resolve it from that folder first. If you omitted the field for automatic discovery, set `$captureExecutable` to its actual full path instead:
+## Set the camera route
 
-```text
-$cameraSettings = Get-Content .\bridge.config.json -Raw | ConvertFrom-Json
-$captureExecutable = $cameraSettings.ffmpegPath
-& $captureExecutable -hide_banner -list_devices true -f dshow -i dummy
-```
+Open **IP Address Redirections** in the emulator's **Triforce** settings. If linked play already works, **keep all eight seat mappings** and change only the camera row labeled `namcam2`.
 
-Inspect its capture modes, substituting the reported name:
+This screenshot shows cabinet A at `192.168.1.2`:
 
-```text
-& $captureExecutable -hide_banner -list_options true -f dshow -i "video=USB Video Device"
-```
+![Cabinet A IP Address Redirections with the camera destination at 192.168.1.2:18080](docs/images/triforce-ip-redirections.png)
 
-These commands can end with an input error after printing the device or mode list. Choose a device supporting 320 × 240 at your requested rate. One tested webcam appears as `USB Video Device`.
+Use your actual LAN addresses. The addresses below are examples.
 
-Each cabinet runs its own bridge and webcam, with its own local configuration. Do not copy another cabinet's `selfAddress` unchanged. The bridge rejects an address that is not assigned to the local computer.
-
-## Connect the emulator
-
-In the emulator's arcade IP redirections, change only the camera row:
-
-| Emulated address | Real address | Description |
+| Setting | Cabinet A | Cabinet B |
 | --- | --- | --- |
-| `192.168.29.104-107` | Your `selfAddress:selfPort`, for example `192.168.1.100:18080` | Arcade camera |
+| Camera Emulated address | `192.168.29.104-107` | `192.168.29.104-107` |
+| Camera Real address | `192.168.1.2:18080` | `192.168.1.3:18080` |
+| CFG `address`, if set manually | `192.168.1.2` | `192.168.1.3` |
+| CFG `camera_port` | `18080` | `18080` |
+| In-game `PCB ID` | `1` | `2` |
 
-Preserve every cabinet seat mapping. Enter an IP and port, without `http://` or `/img.jpg`. Restart the emulator after editing the mapping.
+Enter only the IP address and port in **Real**, without `http://` or `/img.jpg`. Cabinet B must point to its own camera, not cabinet A's. Keep the local preview on `127.0.0.1`; the game's camera route uses the LAN address.
 
-The listener uses the computer's LAN address because the tested emulator configuration binds outgoing sockets to that address. The host rejected a connection from that bound LAN address directly to loopback with error 10049. The listener forwards same-computer requests to the preview server without changing cabinet mappings used for linked play.
+For a new linked setup, this is the complete seat table from the screenshot. Use the **same table on each cabinet**, replacing the example Real addresses with your own. Keep the port-range rows above the rows without ports.
 
-Enable the camera in each game's service/test settings. Start the bridge before booting the game, then run Camera Test. If the boot camera check already failed, restart the game with the bridge running.
-
-## Start and stop
-
-Double-click **Start Camera.cmd**. It starts the bridge in the background, waits for a fresh frame, and opens the preview/status page. With the example preview port, that page is [http://127.0.0.1/](http://127.0.0.1/).
-
-Closing the page leaves the camera running. Click **Stop camera** on the page or double-click **Stop Camera.cmd** to stop it. For launch scripts, use `Start-Camera.ps1 -NoBrowser`; it reuses an already healthy instance. Stop the bridge before changing settings.
-
-The bridge installs no host startup entry. If a configured port is busy, choose a free port and update the corresponding setting. Changing `selfPort` also requires changing the camera destination in the emulator.
-
-## Suggested frontend start/stop
-
-Integration is optional and manual. The package includes no frontend configuration installer, machine XML, or configuration backups. Setup writes only the bridge configuration and never edits a frontend.
-
-In each supported game's editor, open **Additional Apps** and add the two entries below. Repeat on each cabinet using its own bridge folder. These examples assume `C:\Tools\Camera`; replace that path with your installation folder.
-
-Use `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` as **Application Path** for both entries. If your system path differs, obtain it with `(Get-Command powershell.exe).Source`. Keep the executable path separate from **Application Command-Line Parameters**.
-
-| Setting | Start entry | Stop entry |
+| Emulated | Real in this example | Seat |
 | --- | --- | --- |
-| Application Name | `Start Camera Bridge` | `Stop Camera Bridge` |
+| `192.168.29.150:5000-5008` | `192.168.1.2` | 1, static ports |
+| `192.168.29.151:5000-5008` | `192.168.1.3` | 2, static ports |
+| `192.168.29.152:5000-5008` | `192.168.1.4` | 3, static ports |
+| `192.168.29.153:5000-5008` | `192.168.1.5` | 4, static ports |
+| `192.168.29.150` | `192.168.1.2` | 1, other ports |
+| `192.168.29.151` | `192.168.1.3` | 2, other ports |
+| `192.168.29.152` | `192.168.1.4` | 3, other ports |
+| `192.168.29.153` | `192.168.1.5` | 4, other ports |
+
+Seats 3 and 4 are for extra cabinets; two-player linking does not need four computers. Keep unrelated rows already present in your settings.
+
+Restart the emulator after changing its routes. In each game's service/test menu, enable the camera and set **GAME OPTIONS > PCB ID** to match that cabinet's seat. Use ID `1` on A and `2` on B.
+
+Start each bridge before its game. Check the camera test and the image in both games, then test linked play. If a game's boot camera test failed before the bridge started, restart that game.
+
+## Optional LaunchBox setup
+
+Manual use works without frontend integration. To start and stop the bridge with a game, add two **Additional Apps** entries in LaunchBox:
+
+| Setting | Before the game | After the game |
+| --- | --- | --- |
+| Application Path | `C:\Tools\Camera\CameraBridge.exe` | Same path |
+| Application Command-Line Parameters | `--start` | `--stop` |
 | Automatically Run Before Main Application | Checked | Unchecked |
 | Automatically Run After Main Application | Unchecked | Checked |
 | Wait for Exit | **Checked** | **Unchecked** |
 
-Start entry parameters:
+Replace the example path with your folder. `--start` starts the app in the background, waits for a fresh frame, then returns. `--stop` stops the local app and releases the camera.
 
-```text
--NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Start-Camera.ps1" -NoBrowser
-```
+The package never changes LaunchBox itself. Follow the [full manual guide](FRONTEND.md) to add, test, or remove these entries.
 
-Stop entry parameters:
+## If something goes wrong
 
-```text
--NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Stop-Camera.ps1"
-```
-
-The before hook waits for a fresh camera frame and then exits, leaving capture running in the background. `-NoBrowser` prevents the preview from opening over the game. The after hook releases the local webcam. Leave emulator handling disabled for these helper applications and preserve unrelated Additional Apps.
-
-To verify: stop the bridge, launch the game through the frontend, confirm the in-game camera, then exit normally and check that the webcam light turns off. Launch again to confirm repeat use. The frontend must track the actual game session through its launcher; otherwise the after hook can run too early or too late. See the [full manual integration guide](FRONTEND.md) for troubleshooting and removal.
-
-## Capture rate and privacy
-
-`fps: 30` requests 30 captures per second. It does not make the game request or display 30 images per second. During the tested second title session, capture measured about 29.87 FPS while the game requested approximately 10 images per second. The browser's alignment preview refreshes about twice per second; that timer does not control the game's camera requests. See [VALIDATION.md](VALIDATION.md) for timing details.
-
-Frames stay in memory and are replaced continuously. The bridge does not save photographs or record video. Logs contain service/request metadata, not image data. The preview and management server binds to `127.0.0.1`; the game listener accepts only peers whose source is the configured local `selfAddress`, rejecting other LAN peers before forwarding a request.
-
-## End-of-stream compatibility
-
-The tested emulator build drops the final host socket hangup notification from its emulated read set. The second title requires a zero-byte receive to finish its image, so an otherwise valid response can leave it at CAMERA ERROR.
-
-The compatibility listener sends one TCP urgent, out-of-band byte before closing. This lets the original emulator observe read readiness and receive EOF. The byte is outside the ordinary HTTP/JPEG stream; native tests verified unchanged image bytes. The helper also accepts and strips the game's bounded trailing NUL suffix after its request headers.
-
-Keep this listener enabled for the tested build even when the preview works. The preview server alone uses ordinary HTTP and does not supply the EOF workaround. No emulator or launcher executable modification is required.
-
-## Diagnostics and development
-
-| Endpoint | Purpose |
+| Problem | What to check |
 | --- | --- |
-| `/` | Preview and status page. |
-| `/img.jpg` | Latest complete 320 × 240 JPEG; increases the game request counter. |
-| `/preview.jpg` | Same image without increasing that counter. |
-| `/health` | JSON status, frame age/count, configured capture FPS, request counts, and last error. |
-| `POST /api/stop` | Stop through the local management server. |
+| No camera image | Close other webcam apps. Check `camera` in the CFG and restart the bridge. |
+| Wrong network address | Stop the app and set `address` to this cabinet's own LAN IPv4 address. |
+| Port already in use | Stop the older bridge. If you change `camera_port`, change the game's camera route to match. |
+| Preview works, but the game reports a camera error | Check camera enablement, the `namcam2` route, and the app's displayed destination. Restart the game with the bridge already running. |
+| Camera stops too early after a frontend launch | Check how the frontend tracks the real game session. See [frontend troubleshooting](FRONTEND.md#troubleshooting). |
+| Settings seem unchanged | Stop the app before editing, save the CFG beside the EXE, then reopen the app. |
 
-A rising request counter proves requests reached the server; verify the image in the game too. If it stays at zero, check camera enablement and the running emulator configuration. If capture fails, close other webcam apps and check the capture-backend name and mode. Inspect `logs\bridge.log` for errors.
+Frames stay in memory. The bridge does not save photographs or record video. The preview is local, and the game listener accepts only requests from the configured address on the same computer.
 
-Run tests with Node.js on `PATH`:
+## Test status and source
 
-```text
-node --test
-```
+The earlier installed edition worked with both supported titles. The photo above shows both linked cabinets with their camera images. **That result does not establish that the new portable rewrite has passed those game tests.** Recheck both games, linked play, and repeated start/stop before relying on this release candidate.
 
-Integration tests that invoke external runtimes need their executables through the local configuration, documented environment variables, or `PATH`. Unavailable runtimes produce explicit skip reasons. For native EOF diagnostics:
-
-```text
-.\Test-CameraEof.ps1
-.\tools\Test-OobEof.ps1
-```
-
-The first probe uses the running bridge and local configuration. The second creates synthetic loopback connections and needs neither webcam nor emulator.
-
-For a foreground server or test pattern:
-
-```text
-node server.js
-node server.js --config .\test.config.json --test-pattern
-```
-
-Create `test.config.json` from the example with separate preview and game-listener ports before running it beside the normal bridge. Test-pattern mode replaces webcam capture; it still needs FFmpeg and retains the configured compatibility listener. Keep local configurations, logs, diagnostic backups, and emulator/game binaries out of source archives.
-
-For a source release, `tools/build_source_zip.py` builds an allowlisted archive and a SHA-256 manifest. Publish only the inspected archive contents, with confirmed and pending validation results recorded accurately; do not upload the live cabinet folder. Local frontend helpers and machine data are excluded from the public source package.
-
-## Observed camera protocol
-
-Both locally inspected game images request `GET /img.jpg HTTP/1.0`. The second title uses TCP port 80 before redirection, scans for the HTTP header separator, and requires JPEG end marker `FF D9`. Its receive buffer is 512 KiB; the bridge caps images at 500 KiB to leave room for headers. The first title's exact parser limits were not independently established.
+See [validation records](VALIDATION.md) for recorded results and [source/development notes](docs/SOURCE.md) for technical details and the previous source-based setup.

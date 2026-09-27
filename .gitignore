@@ -6,3 +6,5 @@ bridge.config.json
 dist/
 __pycache__/
 *.pyc
+portable/tests/*.exe
+portable/tests/*.pdb

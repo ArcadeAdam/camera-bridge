@@ -1,75 +1,70 @@
-# Manual frontend start and stop
+# Optional LaunchBox start and stop
 
-These instructions add camera startup and cleanup to **the first supported title** and **the second supported title** only. Repeat them on each computer using that computer's bridge folder and configuration. Keep your existing launcher game entries, cabinet seat mappings, and unrelated Additional Apps. Leave unrelated titles unchanged.
+Camera Bridge can run on its own. These steps are only for users who want LaunchBox to start the camera before a game and stop it afterward.
 
-The public Camera Bridge package contains instructions for this integration, not a frontend configuration installer. **Setup Camera.cmd** / **Setup-Camera.ps1** create the bridge's local configuration and never edit the frontend. No machine-specific platform XML or backups are bundled.
+The portable package contains **CameraBridge.exe** and **CameraBridge.cfg**. It does not edit LaunchBox, emulator settings, game profiles, or cabinet routes.
 
-## Before adding the entries
+## Before you begin
 
-Complete the [standalone setup](README.md#configure-this-computer), then manually start the bridge and confirm the preview and the game's Camera Test. Close the game and stop the bridge. This separates webcam/configuration problems from the frontend timing problems.
+1. Finish the [standalone setup](README.md#download-and-start).
+2. Open **CameraBridge.exe** and check its preview.
+3. Start the game manually. Check its camera test and in-game image.
+4. Close the game and close Camera Bridge.
 
-The examples below use `C:\Tools\Camera`. Replace that folder with the actual location on this computer. Open Windows PowerShell and obtain the executable path used to launch the `.ps1` scripts:
+Use each cabinet's own bridge folder and CFG. The examples below use `C:\Tools\Camera`.
 
-```text
-(Get-Command powershell.exe).Source
-```
+## Add two Additional Apps
 
-Copy the returned path into the Application Path field below, separately from its command-line parameters.
+In LaunchBox, edit the game and open **Additional Apps**. Add the following two entries. Put the executable path and arguments in their separate fields.
 
-## Add the before and after applications
-
-1. In the frontend, right-click **the second supported title** and open **Edit > Edit Metadata/Media**. Select **Additional Apps**, then **Add Application**. Older versions may open the game editor directly under **Edit**.
-2. Create the start entry with the settings below, then create the stop entry. Put the executable and its arguments in their separate fields; do not paste the whole command into Application Path.
-3. Save both entries and the game. Repeat for **the first supported title**. Use the normal configured launch route for the tests below.
-
-| Frontend setting | Start entry | Stop entry |
+| Field | Start entry | Stop entry |
 | --- | --- | --- |
 | Application Name | `Start Camera Bridge` | `Stop Camera Bridge` |
-| Application Path | Full `powershell.exe` path obtained above | Same executable path |
+| Application Path | `C:\Tools\Camera\CameraBridge.exe` | `C:\Tools\Camera\CameraBridge.exe` |
+| Application Command-Line Parameters | `--start` | `--stop` |
 | Automatically Run Before Main Application | Checked | Unchecked |
 | Automatically Run After Main Application | Unchecked | Checked |
-| Wait for Exit | **Checked** | **Unchecked**; leave disabled if unavailable |
+| Wait for Exit | **Checked** | **Unchecked** |
 
-For the start entry's **Application Command-Line Parameters**, enter:
+Replace the example path with the actual folder. Leave emulator handling disabled for these helper entries. Keep the game's existing launch settings and unrelated Additional Apps.
 
-```text
--NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Start-Camera.ps1" -NoBrowser
-```
+Save the entries. Repeat for the other supported game, then repeat on the other cabinet.
 
-For the stop entry's **Application Command-Line Parameters**, enter:
+## What the commands do
 
-```text
--NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Stop-Camera.ps1"
-```
+`--start` launches a hidden background app and waits for a fresh camera frame before returning. **Wait for Exit** makes LaunchBox wait for that short startup command, not for the whole camera session. The preview window stays out of the game's way.
 
-Leave emulator and legacy DOS emulation handling disabled for these two helper applications. The `-WindowStyle Hidden` argument hides their PowerShell windows; it is a PowerShell option, not a separate frontend checkbox.
+`--stop` stops the local bridge and releases the webcam. It affects only the copy configured on that computer.
 
-**Wait for Exit** makes the frontend wait for the before application to finish. Here it waits for the short start script, which launches the bridge in the background and checks for a fresh frame before exiting; it does not wait for the camera server to stop. The script's startup deadline is 15 seconds. `-NoBrowser` prevents the preview page from opening over the game.
+For manual use, double-click the EXE to show the preview/status window. Its **Stop** button releases the camera; closing the app also stops capture. Stop the app before changing its CFG.
 
-## Verify a real launch and exit
+## Test the full launch
 
-Run this check for each supported title separately on each computer. For a linked test, both computers need their own bridge and webcam configured first.
+Test each game on each cabinet.
 
-1. With the game closed, use **Stop Camera.cmd** so the test starts with the bridge stopped. Do not start it manually afterward; the before application should do that.
-2. Launch the game normally from the frontend. Confirm its camera check passes and that your camera image appears during the game's photo/camera sequence. The browser should stay closed.
-3. While the game is running, optionally open `http://127.0.0.1/health` if your configured preview port is `80` (otherwise include `:<port>`). It should show `app: "camera-bridge"`, `ok: true`, the expected `cameraAddress`, and rising `gameImageRequests` when the game is using the camera. Check the in-game image as well; requests alone do not prove successful decoding.
-4. Exit through your usual game/frontend controls. Once the game session has ended, the stop application should shut down the bridge and release the webcam. The health URL should stop responding; the camera activity light should turn off if your model has one. The stop script normally finishes within a few seconds and reports an error if shutdown does not complete.
-5. Launch and exit a second time to check repeat startup. Repeat from the fullscreen frontend if that is the interface you normally use. Then run the linked test of the second title with both webcams active and confirm that exiting one cabinet releases its own camera without disrupting the other cabinet's bridge.
+1. Begin with Camera Bridge stopped.
+2. Launch the game from LaunchBox. Do not start the bridge yourself.
+3. Check that the camera test passes and that the image appears in the game.
+4. Exit the game normally. Check that the webcam light turns off, if it has one.
+5. Launch and exit again to check that the camera can reopen.
+6. Test linked play with both cabinets. Exiting one cabinet should release only its own camera.
 
-If a hidden helper fails, close the game and run the same start or stop script visibly in Windows PowerShell to see the error. Inspect `logs\bridge.log` in the bridge folder. Do not assume the game will be prevented from launching merely because its before application failed.
+The new portable build still needs these fresh game and lifecycle checks. Successful tests of the earlier installed edition do not automatically cover this rewrite.
 
-## Launcher session tracking
+## Troubleshooting
 
-The after application is triggered when **the frontend considers its main application finished**. A launcher can hand the game to a child process or remain open after the game exits. Therefore, a correct before/after configuration alone does not guarantee that the frontend will stop the camera at the correct moment through every launcher setup.
+**The camera never starts:** Open the EXE directly and read its status. Check the CFG, webcam availability, and ports. Confirm that the start entry points to the EXE and has only `--start` in its arguments. A failed before command does not necessarily prevent LaunchBox from launching the game.
 
-If the camera stops while the game is still running, or stays on after exiting, verify which launcher/game process your existing frontend entry tracks. Keep the game's working launch configuration intact while diagnosing it. You can temporarily disable the stop Additional App and use **Stop Camera.cmd** after exiting until session tracking is resolved; do not leave that temporary arrangement marked as a passed automatic lifecycle test.
+**The camera stops while the game is running:** A launcher may start a child process and exit. LaunchBox can then think the game has ended and run the stop entry too soon. Check how your existing game entry tracks its session.
 
-The same bridge instance can be reused when already healthy. The stop script stops the local bridge, so avoid overlapping game sessions on the same computer. Each linked cabinet's hooks control only that cabinet's local configuration and camera.
+**The camera stays on after exiting:** A launcher may remain open after the game closes. Check the same session tracking. Until that is fixed, disable only the stop entry and stop the bridge manually after playing.
+
+**Another copy or an older bridge is running:** Stop it before testing this version. Two apps cannot normally share the same webcam or listening ports.
+
+Avoid overlapping game sessions on one computer: the stop entry stops that computer's bridge.
 
 ## Remove the integration
 
-Delete only the two Camera Bridge entries from each game's Additional Apps list. This restores manual Start/Stop use without changing the game's launcher profile or other Additional Apps.
+Delete only **Start Camera Bridge** and **Stop Camera Bridge** from the game's Additional Apps list. Repeat for the other game if needed.
 
-## Validation status
-
-See [VALIDATION.md](VALIDATION.md) for recorded results. The user reports the first and second titles working on the installed cabinet version. Bridge shutdown after a game session and startup during the next session were observed on both cabinets. A paired race with both webcams active has not been separately confirmed, and the renamed public candidate has not had a new live game test. Complete the remaining play-tests and repeat-launch checks before treating this candidate as fully validated.
+The bridge then returns to manual use. No other game or frontend settings need to change.
