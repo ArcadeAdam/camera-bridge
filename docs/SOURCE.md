@@ -141,7 +141,7 @@ Inspect `logs\bridge.log` for source-runtime errors. A rising request counter do
 
 [tools/build_source_zip.py](../tools/build_source_zip.py) creates an allowlisted source archive and SHA-256 manifest. That archive is separate from the two-file portable download. Never package a live cabinet folder, local settings, logs, diagnostic backups, game images, or emulator binaries.
 
-The planned portable asset is `camera-bridge-1.0.0-rc.3-win-x64.zip` under tag `v1.0.0-rc.3`. No published release URL is asserted here.
+The published portable asset is `camera-bridge-1.0.0-rc.4-win-x64.zip` under tag [`v1.0.0-rc.4`](https://github.com/ArcadeAdam/camera-bridge/releases/tag/v1.0.0-rc.4). Its release page includes `SHA256SUMS.txt` for checking the download. Fresh game and linked-cabinet tests remain pending.
 
 For the native rewrite, record the compiler target and binary hash, then check capture/JPEG format, exact-response EOF behavior, same-host access, busy ports, stop/restart, both games, linked play, and frontend lifecycle. Keep native results separate from the previous implementation in [VALIDATION.md](../VALIDATION.md).
 
