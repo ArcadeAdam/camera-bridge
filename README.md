@@ -85,13 +85,36 @@ Closing the page leaves the camera running. Click **Stop camera** on the page or
 
 The bridge installs no host startup entry. If a configured port is busy, choose a free port and update the corresponding setting. Changing `selfPort` also requires changing the camera destination in the emulator.
 
-## Optional frontend integration
+## Suggested frontend start/stop
 
-The public package provides [manual frontend setup instructions](FRONTEND.md). It includes no frontend configuration installer, machine XML, or configuration backups. Standalone Setup writes only the bridge's local configuration; Setup and normal Start/Stop never edit the frontend.
+Integration is optional and manual. The package includes no frontend configuration installer, machine XML, or configuration backups. Setup writes only the bridge configuration and never edits a frontend.
 
-Add two Additional Apps separately to **the first supported title** and **the second supported title**: run `Start-Camera.ps1 -NoBrowser` before the game with **Wait for Exit** enabled, and run `Stop-Camera.ps1` afterward with no wait. The guide provides the exact executable path, hidden-window command lines, checkbox settings, and launch/exit checks. Preserve unrelated applications and leave unrelated titles unchanged.
+In each supported game's editor, open **Additional Apps** and add the two entries below. Repeat on each cabinet using its own bridge folder. These examples assume `C:\Tools\Camera`; replace that path with your installation folder.
 
-Verify a real launch and exit on each computer. The frontend must track the actual game session through the launcher for the stop application to run at the correct time. A configured entry or successful standalone camera check does not establish that launcher lifecycle behavior.
+Use `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` as **Application Path** for both entries. If your system path differs, obtain it with `(Get-Command powershell.exe).Source`. Keep the executable path separate from **Application Command-Line Parameters**.
+
+| Setting | Start entry | Stop entry |
+| --- | --- | --- |
+| Application Name | `Start Camera Bridge` | `Stop Camera Bridge` |
+| Automatically Run Before Main Application | Checked | Unchecked |
+| Automatically Run After Main Application | Unchecked | Checked |
+| Wait for Exit | **Checked** | **Unchecked** |
+
+Start entry parameters:
+
+```text
+-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Start-Camera.ps1" -NoBrowser
+```
+
+Stop entry parameters:
+
+```text
+-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Tools\Camera\Stop-Camera.ps1"
+```
+
+The before hook waits for a fresh camera frame and then exits, leaving capture running in the background. `-NoBrowser` prevents the preview from opening over the game. The after hook releases the local webcam. Leave emulator handling disabled for these helper applications and preserve unrelated Additional Apps.
+
+To verify: stop the bridge, launch the game through the frontend, confirm the in-game camera, then exit normally and check that the webcam light turns off. Launch again to confirm repeat use. The frontend must track the actual game session through its launcher; otherwise the after hook can run too early or too late. See the [full manual integration guide](FRONTEND.md) for troubleshooting and removal.
 
 ## Capture rate and privacy
 
